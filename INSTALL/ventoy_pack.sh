@@ -126,6 +126,9 @@ mkdir -p $tmpmnt/tool
 dd status=none bs=1024 count=16  if=./tool/i386/vtoycli    of=$tmpmnt/tool/mount.exfat-fuse_i386
 dd status=none bs=1024 count=16  if=./tool/x86_64/vtoycli  of=$tmpmnt/tool/mount.exfat-fuse_x86_64
 dd status=none bs=1024 count=16  if=./tool/aarch64/vtoycli of=$tmpmnt/tool/mount.exfat-fuse_aarch64
+if [ -f ./tool/loongarch64/vtoycli ]; then
+    dd status=none bs=1024 count=16 if=./tool/loongarch64/vtoycli of=$tmpmnt/tool/mount.exfat-fuse_loongarch64
+fi
 
 
 rm -f $tmpmnt/grub/i386-pc/*.img
@@ -197,7 +200,7 @@ rm -f ventoy-${curver}-linux.tar.gz
 
 CurDir=$PWD
 
-for d in i386 x86_64 aarch64 mips64el; do
+for d in i386 x86_64 aarch64 mips64el loongarch64; do
     cd $tmpdir/tool/$d
     for file in $(ls); do
         if [ "$file" != "xzcat" ]; then
@@ -221,9 +224,9 @@ chmod +x $tmpdir/VentoyVlnk.sh
 chmod +x $tmpdir/VentoyGUI*
 chmod +x $tmpdir/tool/*.sh
 
-for d in i386 x86_64 aarch64 mips64el; do
-    chmod +x $tmpdir/tool/$d/xzcat
-    chmod +x $tmpdir/tool/$d/Ventoy2Disk.*
+for d in i386 x86_64 aarch64 mips64el loongarch64; do
+    [ -f $tmpdir/tool/$d/xzcat ] && chmod +x $tmpdir/tool/$d/xzcat
+    ls $tmpdir/tool/$d/Ventoy2Disk.* >/dev/null 2>&1 && chmod +x $tmpdir/tool/$d/Ventoy2Disk.*
 done
 
 

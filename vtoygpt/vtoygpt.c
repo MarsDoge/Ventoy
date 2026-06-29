@@ -7,12 +7,12 @@
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  *
@@ -144,7 +144,7 @@ void DumpHead(VTOY_GPT_HDR *pHead)
 {
     UINT32 CrcRead;
     UINT32 CrcCalc;
-    
+
     printf("Signature:<%s>\n", pHead->Signature);
     printf("Version:<%02x %02x %02x %02x>\n", pHead->Version[0], pHead->Version[1], pHead->Version[2], pHead->Version[3]);
     printf("Length:%u\n", pHead->Length);
@@ -154,7 +154,7 @@ void DumpHead(VTOY_GPT_HDR *pHead)
     printf("PartAreaStartLBA:%lu\n", pHead->PartAreaStartLBA);
     printf("PartAreaEndLBA:%lu\n", pHead->PartAreaEndLBA);
     DumpGuid("DiskGuid", &pHead->DiskGuid);
-    
+
     printf("PartTblStartLBA:%lu\n", pHead->PartTblStartLBA);
     printf("PartTblTotNum:%u\n", pHead->PartTblTotNum);
     printf("PartTblEntryLen:%u\n", pHead->PartTblEntryLen);
@@ -188,7 +188,7 @@ void DumpHead(VTOY_GPT_HDR *pHead)
 void DumpPartTable(VTOY_GPT_PART_TBL *Tbl)
 {
     int i;
-    
+
     DumpGuid("PartType", &Tbl->PartType);
     DumpGuid("PartGuid", &Tbl->PartGuid);
     printf("StartLBA:%lu\n", Tbl->StartLBA);
@@ -200,13 +200,13 @@ void DumpPartTable(VTOY_GPT_PART_TBL *Tbl)
     {
         printf("%c", (CHAR)(Tbl->Name[i]));
     }
-    printf("\n");    
+    printf("\n");
 }
 
 void DumpMBR(MBR_HEAD *pMBR)
 {
     int i;
-    
+
     for (i = 0; i < 4; i++)
     {
         printf("=========== Partition Table %d ============\n", i + 1);
@@ -236,7 +236,7 @@ int DumpGptInfo(VTOY_GPT_INFO *pGptInfo)
         {
             break;
         }
-    
+
         printf("=====Part %d=====\n", i);
         DumpPartTable(pGptInfo->PartTbl + i);
     }
@@ -244,7 +244,7 @@ int DumpGptInfo(VTOY_GPT_INFO *pGptInfo)
     return 0;
 }
 
-#define VENTOY_EFI_PART_ATTR   0xC000000000000001ULL
+#define VENTOY_EFI_PART_ATTR   0x8000000000000000ULL
 
 int main(int argc, const char **argv)
 {
@@ -277,7 +277,7 @@ int main(int argc, const char **argv)
     }
 
     read(fd, pMainGptInfo, sizeof(VTOY_GPT_INFO));
-    
+
     if (argv[1][0] == '-' && argv[1][1] == 'd')
     {
         DumpGptInfo(pMainGptInfo);
@@ -291,23 +291,26 @@ int main(int argc, const char **argv)
         Name = pMainGptInfo->PartTbl[1].Name;
         if (Name[0] == 'V' && Name[1] == 'T' && Name[2] == 'O' && Name[3] == 'Y')
         {
-            pMainGptInfo->PartTbl[1].Attr = VENTOY_EFI_PART_ATTR;
-            pMainGptInfo->Head.PartTblCrc = VtoyCrc32(pMainGptInfo->PartTbl, sizeof(pMainGptInfo->PartTbl));
-            pMainGptInfo->Head.Crc = 0;
-            pMainGptInfo->Head.Crc = VtoyCrc32(&pMainGptInfo->Head, pMainGptInfo->Head.Length);
+            if (pMainGptInfo->PartTbl[1].Attr != VENTOY_EFI_PART_ATTR)
+            {
+                pMainGptInfo->PartTbl[1].Attr = VENTOY_EFI_PART_ATTR;
+                pMainGptInfo->Head.PartTblCrc = VtoyCrc32(pMainGptInfo->PartTbl, sizeof(pMainGptInfo->PartTbl));
+                pMainGptInfo->Head.Crc = 0;
+                pMainGptInfo->Head.Crc = VtoyCrc32(&pMainGptInfo->Head, pMainGptInfo->Head.Length);
 
-            pBackGptInfo->PartTbl[1].Attr = VENTOY_EFI_PART_ATTR;
-            pBackGptInfo->Head.PartTblCrc = VtoyCrc32(pBackGptInfo->PartTbl, sizeof(pBackGptInfo->PartTbl));
-            pBackGptInfo->Head.Crc = 0;
-            pBackGptInfo->Head.Crc = VtoyCrc32(&pBackGptInfo->Head, pBackGptInfo->Head.Length);
+                pBackGptInfo->PartTbl[1].Attr = VENTOY_EFI_PART_ATTR;
+                pBackGptInfo->Head.PartTblCrc = VtoyCrc32(pBackGptInfo->PartTbl, sizeof(pBackGptInfo->PartTbl));
+                pBackGptInfo->Head.Crc = 0;
+                pBackGptInfo->Head.Crc = VtoyCrc32(&pBackGptInfo->Head, pBackGptInfo->Head.Length);
 
-            lseek(fd, 512, SEEK_SET);
-            write(fd, (UINT8 *)pMainGptInfo + 512, sizeof(VTOY_GPT_INFO) - 512);
+                lseek(fd, 512, SEEK_SET);
+                write(fd, (UINT8 *)pMainGptInfo + 512, sizeof(VTOY_GPT_INFO) - 512);
 
-            lseek(fd, DiskSize - 33 * 512, SEEK_SET);
-            write(fd, pBackGptInfo, sizeof(VTOY_BK_GPT_INFO));
+                lseek(fd, DiskSize - 33 * 512, SEEK_SET);
+                write(fd, pBackGptInfo, sizeof(VTOY_BK_GPT_INFO));
 
-            fsync(fd);
+                fsync(fd);
+            }
         }
     }
 

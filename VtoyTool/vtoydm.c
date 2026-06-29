@@ -7,12 +7,12 @@
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  *
@@ -71,6 +71,7 @@ static int verbose = 0;
 #define CMD_DUMP_ISO_INFO     3
 #define CMD_EXTRACT_ISO_FILE  4
 #define CMD_PRINT_EXTRACT_ISO_FILE  5
+#define CMD_PRINT_RAW_TABLE         6
 
 static uint64_t g_iso_file_size;
 static char g_disk_name[128];
@@ -84,7 +85,7 @@ ventoy_img_chunk * vtoydm_get_img_map_data(const char *img_map_file, int *plen)
     int rc = 1;
     FILE *fp = NULL;
     ventoy_img_chunk *chunk = NULL;
-    
+
     fp = fopen(img_map_file, "rb");
     if (NULL == fp)
     {
@@ -113,7 +114,7 @@ ventoy_img_chunk * vtoydm_get_img_map_data(const char *img_map_file, int *plen)
 
     if (len % sizeof(ventoy_img_chunk))
     {
-        fprintf(stderr, "image map file size %d is not aligned with %d\n", 
+        fprintf(stderr, "image map file size %d is not aligned with %d\n",
                 len, (int)sizeof(ventoy_img_chunk));
         goto end;
     }
@@ -141,7 +142,7 @@ UINT64 vtoydm_get_file_size(const char *pcFileName)
     (void)pcFileName;
 
     debug("vtoydm_get_file_size %s %lu\n", pcFileName, (unsigned long)g_iso_file_size);
-    
+
     return g_iso_file_size;
 }
 
@@ -159,14 +160,14 @@ BISO_FILE_S * vtoydm_open_file(const char *pcFileName)
         file->FileSize = g_iso_file_size;
         file->CurPos = 0;
     }
-    
+
     return file;
 }
 
 void vtoydm_close_file(BISO_FILE_S *pstFile)
 {
     debug("vtoydm_close_file\n");
-    
+
     if (pstFile)
     {
         free(pstFile);
@@ -189,7 +190,7 @@ UINT64 vtoydm_map_iso_sector(UINT64 sector)
 {
     int i;
     UINT64 disk_sector = 0;
-    
+
     for (i = 0; i < g_img_chunk_num; i++)
     {
         if (sector >= g_img_chunk[i].img_start_sector && sector <= g_img_chunk[i].img_end_sector)
@@ -207,7 +208,7 @@ int vtoydm_read_iso_sector(UINT64 sector, void *buf)
     int i;
     int fd;
     UINT64 disk_sector = 0;
-    
+
     for (i = 0; i < g_img_chunk_num; i++)
     {
         if (sector >= g_img_chunk[i].img_start_sector && sector <= g_img_chunk[i].img_end_sector)
@@ -234,9 +235,9 @@ int vtoydm_read_iso_sector(UINT64 sector, void *buf)
 
 UINT64 vtoydm_read_file
 (
-    BISO_FILE_S *pstFile, 
-    UINT         uiBlkSize, 
-    UINT         uiBlkNum, 
+    BISO_FILE_S *pstFile,
+    UINT         uiBlkSize,
+    UINT         uiBlkNum,
     VOID        *pBuf
 )
 {
@@ -251,7 +252,7 @@ UINT64 vtoydm_read_file
     if (pos > 0)
     {
         align = 2048 - pos;
-        
+
         vtoydm_read_iso_sector(pstFile->CurPos / 2048, g_iso_sector_buf);
         if (readlen > align)
         {
@@ -272,7 +273,7 @@ UINT64 vtoydm_read_file
     {
         vtoydm_read_iso_sector(pstFile->CurPos / 2048, curbuf);
         pstFile->CurPos += 2048;
-        
+
         curbuf += 2048;
         readlen -= 2048;
     }
@@ -283,7 +284,7 @@ UINT64 vtoydm_read_file
         memcpy(curbuf, g_iso_sector_buf, readlen);
         pstFile->CurPos += readlen;
     }
-    
+
     return uiBlkSize * uiBlkNum;
 }
 
@@ -297,7 +298,7 @@ int vtoydm_dump_iso(const char *img_map_file, const char *diskname)
     BISO_READ_S *iso;
     BISO_PARSER_S *parser = NULL;
     char label[64] = {0};
-    
+
     chunk = vtoydm_get_img_map_data(img_map_file, &len);
     if (NULL == chunk)
     {
@@ -326,7 +327,7 @@ int vtoydm_dump_iso(const char *img_map_file, const char *diskname)
     ret = BISO_OpenImage("XXX", iso);
     debug("open iso image ret=0x%lx\n", ret);
 
-    parser = (BISO_PARSER_S *)iso;    
+    parser = (BISO_PARSER_S *)iso;
     memcpy(label, parser->pstPVD->szVolumeId, 32);
     for (i = 32; i >=0; i--)
     {
@@ -342,11 +343,11 @@ int vtoydm_dump_iso(const char *img_map_file, const char *diskname)
 
     if (label[0])
     {
-        printf("VENTOY_ISO_LABEL %s\n", label);    
+        printf("VENTOY_ISO_LABEL %s\n", label);
     }
-    
+
     BISO_DumpFileTree(iso);
-    
+
     BISO_FreeReadHandle(iso);
 
     free(chunk);
@@ -355,7 +356,7 @@ int vtoydm_dump_iso(const char *img_map_file, const char *diskname)
 
 static int vtoydm_extract_iso
 (
-    const char *img_map_file, 
+    const char *img_map_file,
     const char *diskname,
     unsigned long first_sector,
     unsigned long long file_size,
@@ -396,7 +397,7 @@ static int vtoydm_extract_iso
             file_size = 0;
         }
     }
-    
+
     fclose(fp);
     free(g_img_chunk);
     return 0;
@@ -405,7 +406,7 @@ static int vtoydm_extract_iso
 
 static int vtoydm_print_extract_iso
 (
-    const char *img_map_file, 
+    const char *img_map_file,
     const char *diskname,
     unsigned long first_sector,
     unsigned long long file_size,
@@ -463,7 +464,7 @@ static int vtoydm_print_extract_iso
             last = sector;
             count = 4;
         }
-        
+
         if (file_size > 2048)
         {
             file_size -= 2048;
@@ -480,7 +481,7 @@ static int vtoydm_print_extract_iso
         buf[1] = count;
         fwrite(buf, 1, sizeof(buf), fp);
     }
-    
+
     fclose(fp);
     free(g_img_chunk);
     return 0;
@@ -496,7 +497,7 @@ static int vtoydm_print_linear_table(const char *img_map_file, const char *diskn
     uint32_t disk_sector_num;
     uint32_t sector_start;
     ventoy_img_chunk *chunk = NULL;
-    
+
     chunk = vtoydm_get_img_map_data(img_map_file, &len);
     if (NULL == chunk)
     {
@@ -510,20 +511,20 @@ static int vtoydm_print_linear_table(const char *img_map_file, const char *diskn
 
         /* TBD: to be more flexible */
         #if 0
-        printf("%u %u linear %s %llu\n", 
-               (sector_start << 2), disk_sector_num, 
+        printf("%u %u linear %s %llu\n",
+               (sector_start << 2), disk_sector_num,
                diskname, (unsigned long long)chunk[i].disk_start_sector);
         #else
         if (strstr(diskname, "nvme") || strstr(diskname, "mmc") || strstr(diskname, "nbd"))
         {
-            printf("%u %u linear %sp%d %llu\n", 
-               (sector_start << 2), disk_sector_num, 
+            printf("%u %u linear %sp%d %llu\n",
+               (sector_start << 2), disk_sector_num,
                diskname, part, (unsigned long long)chunk[i].disk_start_sector - offset);
         }
         else
         {
-            printf("%u %u linear %s%d %llu\n", 
-               (sector_start << 2), disk_sector_num, 
+            printf("%u %u linear %s%d %llu\n",
+               (sector_start << 2), disk_sector_num,
                diskname, part, (unsigned long long)chunk[i].disk_start_sector - offset);
         }
         #endif
@@ -541,7 +542,7 @@ static int vtoydm_print_help(FILE *fp)
             "   vtoydm -i -f img_map_file -d diskname [ -v ] \n"
             "   vtoydm -e -f img_map_file -d diskname -s sector -l len -o file [ -v ] \n"
             );
-    return 0;        
+    return 0;
 }
 
 static uint64_t vtoydm_get_part_start(const char *diskname, int part)
@@ -563,7 +564,46 @@ static uint64_t vtoydm_get_part_start(const char *diskname, int part)
     if (access(diskpath, F_OK) >= 0)
     {
         debug("get part start from sysfs for %s %d\n", diskname, part);
-        
+
+        fd = open(diskpath, O_RDONLY | O_BINARY);
+        if (fd >= 0)
+        {
+            read(fd, sizebuf, sizeof(sizebuf));
+            size = strtoull(sizebuf, NULL, 10);
+            close(fd);
+            return size;
+        }
+    }
+    else
+    {
+        debug("%s not exist \n", diskpath);
+    }
+
+    return size;
+}
+
+static uint64_t vtoydm_get_part_secnum(const char *diskname, int part)
+{
+    int fd;
+    unsigned long long size = 0;
+    char diskpath[256] = {0};
+    char sizebuf[64] = {0};
+
+    diskname += 5; /* skip /dev/ */
+
+    if (strstr(diskname, "nvme") || strstr(diskname, "mmc") || strstr(diskname, "nbd"))
+    {
+        snprintf(diskpath, sizeof(diskpath) - 1, "/sys/class/block/%sp%d/size", diskname, part);
+    }
+    else
+    {
+        snprintf(diskpath, sizeof(diskpath) - 1, "/sys/class/block/%s%d/size", diskname, part);
+    }
+
+    if (access(diskpath, F_OK) >= 0)
+    {
+        debug("get part size from sysfs for %s %d\n", diskname, part);
+
         fd = open(diskpath, O_RDONLY | O_BINARY);
         if (fd >= 0)
         {
@@ -610,12 +650,12 @@ static int vtoydm_vlnk_convert(char *disk, int len, int *part, uint64_t *offset)
     if (param.vtoy_reserved[6])
     {
         cnt = vtoy_find_disk_by_guid(&param, diskname);
-        debug("vtoy_find_disk_by_guid cnt=%d\n", cnt);        
+        debug("vtoy_find_disk_by_guid cnt=%d\n", cnt);
         if (cnt == 1)
         {
             *part = param.vtoy_disk_part_id;
             *offset = vtoydm_get_part_start(diskname, *part);
-            
+
             debug("VLNK <%s> <%s> <P%d> <%llu>\n", disk, diskname, *part, (unsigned long long)(*offset));
 
             snprintf(disk, len, "/dev/%s", diskname);
@@ -630,6 +670,24 @@ end:
     return rc;
 }
 
+static int vtoydm_print_raw_linear_table(const char *img_map_file, const char *diskname, int part)
+{
+    uint64_t disk_sector_num;
+
+    disk_sector_num = vtoydm_get_part_secnum(diskname, part);
+
+    if (strstr(diskname, "nvme") || strstr(diskname, "mmc") || strstr(diskname, "nbd"))
+    {
+        printf("0 %lu linear %sp%d 0\n", (unsigned long)disk_sector_num, diskname, part);
+    }
+    else
+    {
+        printf("0 %lu linear %s%d 0\n", (unsigned long)disk_sector_num, diskname, part);
+    }
+
+    return 0;
+}
+
 int vtoydm_main(int argc, char **argv)
 {
     int ch;
@@ -642,7 +700,7 @@ int vtoydm_main(int argc, char **argv)
     char filepath[300] = {0};
     char outfile[300] = {0};
 
-    while ((ch = getopt(argc, argv, "s:l:o:d:f:v::i::p::c::h::e::E::")) != -1)
+    while ((ch = getopt(argc, argv, "s:l:o:d:f:v::i::p::r::c::h::e::E::")) != -1)
     {
         if (ch == 'd')
         {
@@ -655,6 +713,10 @@ int vtoydm_main(int argc, char **argv)
         else if (ch == 'p')
         {
             cmd = CMD_PRINT_TABLE;
+        }
+        else if (ch == 'r')
+        {
+            cmd = CMD_PRINT_RAW_TABLE;
         }
         else if (ch == 'c')
         {
@@ -705,16 +767,20 @@ int vtoydm_main(int argc, char **argv)
         return 1;
     }
 
-    debug("cmd=%d file=<%s> disk=<%s> first_sector=%lu file_size=%llu\n", 
+    debug("cmd=%d file=<%s> disk=<%s> first_sector=%lu file_size=%llu\n",
           cmd, filepath, diskname, first_sector, file_size);
 
     vtoydm_vlnk_convert(diskname, sizeof(diskname), &part, &offset);
-    
+
     switch (cmd)
     {
         case CMD_PRINT_TABLE:
         {
             return vtoydm_print_linear_table(filepath, diskname, part, offset);
+        }
+        case CMD_PRINT_RAW_TABLE:
+        {
+            return vtoydm_print_raw_linear_table(filepath, diskname, part);
         }
         case CMD_CREATE_DM:
         {
