@@ -1547,6 +1547,11 @@ grub_err_t ventoy_cmd_load_cpio(grub_extcmd_context_t ctxt, int argc, char **arg
         debug("cpio busybox proc %s\n", args[3]);
         ventoy_cpio_busybox64((cpio_newc_header *)g_ventoy_cpio_buf, "m64");
     }
+    else if (grub_strcmp(args[3], "busybox=l64") == 0)
+    {
+        debug("cpio busybox proc %s\n", args[3]);
+        ventoy_cpio_busybox64((cpio_newc_header *)g_ventoy_cpio_buf, "l64");
+    }
 
     VENTOY_CMD_RETURN(GRUB_ERR_NONE);
 }
@@ -1867,7 +1872,7 @@ static int ventoy_systemd_conf_hook(const char *filename, const struct grub_dirh
         ctx->pos = oldpos;
         goto out;
     }
-    vtoy_len_ssprintf(ctx->buf, ctx->pos, ctx->len, "  echo \"Loading kernel ...\"\n  linux %s ", tag);
+    vtoy_len_ssprintf(ctx->buf, ctx->pos, ctx->len, "  echo \"Downloading kernel ...\"\n  linux %s ", tag);
 
     /* kernel options */
     grub_memcpy(filebuf, bkbuf, file->size);
@@ -1876,7 +1881,7 @@ static int ventoy_systemd_conf_hook(const char *filename, const struct grub_dirh
 
     
     /* initrd xxx xxx xxx */
-    vtoy_len_ssprintf(ctx->buf, ctx->pos, ctx->len, "  echo \"Loading initrd ...\"\n  %s ", ctx->initrd_cmd);
+    vtoy_len_ssprintf(ctx->buf, ctx->pos, ctx->len, "  echo \"Downloading initrd ...\"\n  initrd ");
     grub_memcpy(filebuf, bkbuf, file->size);
     tag = ventoy_systemd_conf_tag(filebuf, "initrd", 1);
     while (tag)
@@ -1890,34 +1895,6 @@ static int ventoy_systemd_conf_hook(const char *filename, const struct grub_dirh
 out:
     grub_check_free(filebuf);
     grub_file_close(file);
-    return 0;
-}
-
-grub_err_t ventoy_cmd_linux_initrd(grub_extcmd_context_t ctxt, int argc, char **args)
-{
-    int i;    
-    int pos = 0;
-    char *buf = NULL;
-
-    (void)ctxt;
-
-    buf = (char *)grub_malloc(VTOY_SIZE_4KB);
-    if (!buf)
-    {
-        return 1;
-    }
-
-    pos += grub_snprintf(buf + pos, VTOY_SIZE_4KB - pos, "initrd mem:%s:size:%s",
-        grub_env_get("ventoy_cpio_addr"), grub_env_get("ventoy_cpio_size"));
-    
-    for (i = 0; i < argc; i++)
-    {
-        pos += grub_snprintf(buf + pos, VTOY_SIZE_4KB - pos, " newc:initrd%03d:%s", i + 1, args[i]);
-    }
-
-    grub_script_execute_sourcecode(buf);
-    grub_free(buf);
-
     return 0;
 }
 
@@ -1964,7 +1941,6 @@ grub_err_t ventoy_cmd_linux_systemd_menu(grub_extcmd_context_t ctxt, int argc, c
 
     ctx.dev = args[0];
     ctx.buf = buf;
-    ctx.initrd_cmd = args[2] ? args[2] : "initrd";
     ctx.pos = 0;
     ctx.len = VTOY_LINUX_SYSTEMD_MENU_MAX_BUF;
     fs->fs_dir(dev, "/loader/entries", ventoy_systemd_conf_hook, &ctx);

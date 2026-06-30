@@ -7,12 +7,12 @@
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation; either version 3 of the
  * License, or (at your option) any later version.
- *
+ * 
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, see <http://www.gnu.org/licenses/>.
  *
@@ -37,7 +37,6 @@
 #define VTOY_SIZE_4MB     (4 * 1024 * 1024)
 #define VTOY_SIZE_512KB   (512 * 1024)
 #define VTOY_SIZE_1KB     1024
-#define VTOY_SIZE_4KB     4096
 #define VTOY_SIZE_32KB    (32 * 1024)
 #define VTOY_SIZE_128KB   (128 * 1024)
 
@@ -70,12 +69,15 @@
 #define VTOY_PLAT_X86_64_UEFI   0x55454649
 #define VTOY_PLAT_X86_LEGACY    0x42494f53
 #define VTOY_PLAT_MIPS_UEFI     0x4D495053
+#define VTOY_PLAT_LOONGARCH64_UEFI 0xf595124d
 
 #define VTOY_COMM_CPIO  "ventoy.cpio"
 #if defined(__arm__) || defined(__aarch64__)
 #define VTOY_ARCH_CPIO  "ventoy_arm64.cpio"
 #elif defined(__mips__)
 #define VTOY_ARCH_CPIO  "ventoy_mips64.cpio"
+#elif defined(__loongarch__)
+#define VTOY_ARCH_CPIO  "ventoy_loongarch64.cpio"
 #else
 #define VTOY_ARCH_CPIO  "ventoy_x86.cpio"
 #endif
@@ -95,12 +97,6 @@
     grub_exit(); \
     return (err);\
 }
-
-#define vtoy_tip(wait_seconds, fmt, ...) \
-    grub_printf(fmt, __VA_ARGS__); \
-    grub_refresh(); \
-    grub_sleep(wait_seconds)
-
 
 #define VTOY_APPEND_NEWBUF(buf) \
 {\
@@ -142,7 +138,7 @@ typedef enum VTOY_FILE_FLT
     VTOY_FILE_FLT_IMG,     /* .img */
     VTOY_FILE_FLT_VHD,     /* .vhd(x) */
     VTOY_FILE_FLT_VTOY,    /* .vtoy */
-
+    
     VTOY_FILE_FLT_BUTT
 }VTOY_FILE_FLT;
 
@@ -160,7 +156,7 @@ typedef struct cmd_para
     grub_extcmd_func_t func;
     grub_command_flags_t flags;
     const struct grub_arg_option *parser;
-
+    
     const char *summary;
     const char *description;
 
@@ -171,7 +167,7 @@ typedef struct cmd_para
 #define ventoy_align(value, align)  (((value) + ((align) - 1)) & (~((align) - 1)))
 
 #pragma pack(1)
-typedef struct cpio_newc_header
+typedef struct cpio_newc_header 
 {
     char  c_magic[6];
     char  c_ino[8];
@@ -195,18 +191,6 @@ typedef struct cpio_newc_header
 #define check_free(p, func) if (p) { func(p); p = NULL; }
 #define grub_check_free(p) if (p) { grub_free(p); p = NULL; }
 
-#define VTOY_SHIM_POLICY_GUID    {0x90a29d14, 0x3968, 0x48fe, { 0x85, 0x81, 0x6b, 0x7f, 0x7d, 0xc4, 0x70, 0x55 }};
-
-typedef void (*VTOY_BYPASS_SB)(void);
-typedef void (*VTOY_CHECK_SB)(void);
-typedef void (*VTOY_LAUNCHED)(void);
-typedef struct _VTOY_SHIM{
-	VTOY_BYPASS_SB ByPassSB;
-	VTOY_CHECK_SB CheckSB;
-	VTOY_LAUNCHED Launched;
-} VTOY_SHIM;
-
-
 typedef int (*grub_char_check_func)(int c);
 #define ventoy_is_decimal(str)  ventoy_string_check(str, grub_isdigit)
 
@@ -218,7 +202,7 @@ typedef struct ventoy_patch_vhd
     grub_uint8_t  part_offset_or_guid[16];
     grub_uint32_t reserved1;
     grub_uint32_t part_type;
-    grub_uint8_t  disk_signature_or_guid[16];
+    grub_uint8_t  disk_signature_or_guid[16];    
     grub_uint8_t  reserved2[16];
     grub_uint8_t  vhd_file_path[1];
 }ventoy_patch_vhd;
@@ -296,7 +280,7 @@ typedef struct img_info
     const char *tip2;
     const char *class;
     const char *menu_prefix;
-
+    
     int id;
     int type;
     int plugin_list_index;
@@ -325,8 +309,8 @@ typedef struct img_iterator_node
 
     struct img_iterator_node *parent;
     struct img_iterator_node *firstchild;
-
-    void *firstiso;
+    
+    void *firstiso;    
 }img_iterator_node;
 
 
@@ -340,7 +324,7 @@ typedef struct initrd_info
 
     grub_uint8_t  iso_type; // 0: iso9660  1:udf
     grub_uint32_t udf_start_block;
-
+    
     grub_uint64_t override_offset;
     grub_uint32_t override_length;
     char          override_data[32];
@@ -409,7 +393,7 @@ void ventoy_debug(const char *fmt, ...);
 #pragma pack(1)
 
 /* A WIM resource header */
-typedef struct wim_resource_header
+typedef struct wim_resource_header 
 {
     grub_uint64_t size_in_wim:56; /* Compressed length */
     grub_uint64_t flags:8;        /* flags  */
@@ -421,7 +405,7 @@ typedef struct wim_resource_header
 #define WIM_RESHDR_ZLEN_MASK 0x00ffffffffffffffULL
 
 /* WIM resource header flags */
-typedef enum wim_resource_header_flags
+typedef enum wim_resource_header_flags 
 {
     WIM_RESHDR_METADATA = ( 0x02ULL << 56 ),       /* Resource contains metadata */
     WIM_RESHDR_COMPRESSED = ( 0x04ULL << 56 ),     /* Resource is compressed */
@@ -431,7 +415,7 @@ typedef enum wim_resource_header_flags
 #define WIM_HEAD_SIGNATURE   "MSWIM\0\0"
 
 /* WIM header */
-typedef struct wim_header
+typedef struct wim_header 
 {
     grub_uint8_t signature[8];          /* Signature */
     grub_uint32_t header_len;           /* Header length */
@@ -451,21 +435,21 @@ typedef struct wim_header
 } wim_header;
 
 /* WIM header flags */
-typedef enum wim_header_flags
+typedef enum wim_header_flags 
 {
     WIM_HDR_XPRESS = 0x00020000, /* WIM uses Xpress compresson */
     WIM_HDR_LZX = 0x00040000,    /* WIM uses LZX compression */
 }wim_header_flags;
 
 /* A WIM file hash */
-typedef struct wim_hash
+typedef struct wim_hash 
 {
     /* SHA-1 hash */
     grub_uint8_t sha1[20];
 }wim_hash;
 
 /* A WIM lookup table entry */
-typedef struct wim_lookup_entry
+typedef struct wim_lookup_entry 
 {
     wim_resource_header resource; /* Resource header */
     grub_uint16_t part;           /* Part number */
@@ -477,19 +461,19 @@ typedef struct wim_lookup_entry
 #define WIM_CHUNK_LEN 32768
 
 /* A WIM chunk buffer */
-typedef struct wim_chunk_buffer
+typedef struct wim_chunk_buffer 
 {
     grub_uint8_t data[WIM_CHUNK_LEN]; /*Data */
 }wim_chunk_buffer;
 
 /* Security data */
-typedef struct wim_security_header
+typedef struct wim_security_header 
 {
     grub_uint32_t len;   /* Length */
     grub_uint32_t count; /* Number of entries */
 }wim_security_header;
 
-typedef struct wim_stream_entry
+typedef struct wim_stream_entry 
 {
     grub_uint64_t len;
     grub_uint64_t unused1;
@@ -499,7 +483,7 @@ typedef struct wim_stream_entry
 }wim_stream_entry;
 
 /* Directory entry */
-typedef struct wim_directory_entry
+typedef struct wim_directory_entry 
 {
     grub_uint64_t len;                 /* Length */
     grub_uint32_t attributes;     /* Attributes */
@@ -602,7 +586,7 @@ typedef struct _VTOY_JSON
     struct _VTOY_JSON *pstChild;
 
     JSON_TYPE enDataType;
-    union
+    union 
     {
         char  *pcStrVal;
         int   iNumVal;
@@ -675,7 +659,6 @@ grub_uint32_t ventoy_get_iso_boot_catlog(grub_file_t file);
 int ventoy_has_efi_eltorito(grub_file_t file, grub_uint32_t sector);
 grub_err_t ventoy_cmd_linux_chain_data(grub_extcmd_context_t ctxt, int argc, char **args);
 grub_err_t ventoy_cmd_linux_systemd_menu(grub_extcmd_context_t ctxt, int argc, char **args);
-grub_err_t ventoy_cmd_linux_initrd(grub_extcmd_context_t ctxt, int argc, char **args);
 grub_err_t ventoy_cmd_linux_limine_menu(grub_extcmd_context_t ctxt, int argc, char **args);
 grub_err_t ventoy_cmd_linux_locate_initrd(grub_extcmd_context_t ctxt, int argc, char **args);
 grub_err_t ventoy_cmd_initrd_count(grub_extcmd_context_t ctxt, int argc, char **args);
@@ -714,7 +697,7 @@ int vtoy_json_parse_value
 (
     char *pcNewStart,
     char *pcRawStart,
-    VTOY_JSON *pstJson,
+    VTOY_JSON *pstJson, 
     const char *pcData,
     const char **ppcEnd
 );
@@ -730,51 +713,51 @@ int vtoy_json_scan_parse
 
 int vtoy_json_scan_array
 (
-     VTOY_JSON *pstJson,
-     const char *szKey,
+     VTOY_JSON *pstJson, 
+     const char *szKey, 
      VTOY_JSON **ppstArrayItem
 );
 
 int vtoy_json_scan_array_ex
 (
-     VTOY_JSON *pstJson,
-     const char *szKey,
+     VTOY_JSON *pstJson, 
+     const char *szKey, 
      VTOY_JSON **ppstArrayItem
 );
 int vtoy_json_scan_object
 (
-     VTOY_JSON *pstJson,
-     const char *szKey,
+     VTOY_JSON *pstJson, 
+     const char *szKey, 
     VTOY_JSON **ppstObjectItem
 );
 int vtoy_json_get_int
 (
-    VTOY_JSON *pstJson,
-    const char *szKey,
+    VTOY_JSON *pstJson, 
+    const char *szKey, 
     int *piValue
 );
 int vtoy_json_get_uint
 (
-    VTOY_JSON *pstJson,
-    const char *szKey,
+    VTOY_JSON *pstJson, 
+    const char *szKey, 
     grub_uint32_t *puiValue
 );
 int vtoy_json_get_uint64
 (
-    VTOY_JSON *pstJson,
-    const char *szKey,
+    VTOY_JSON *pstJson, 
+    const char *szKey, 
     grub_uint64_t *pui64Value
 );
 int vtoy_json_get_bool
 (
     VTOY_JSON *pstJson,
-    const char *szKey,
+    const char *szKey, 
     grub_uint8_t *pbValue
 );
 int vtoy_json_get_string
 (
-     VTOY_JSON *pstJson,
-     const char *szKey,
+     VTOY_JSON *pstJson, 
+     const char *szKey, 
      grub_uint32_t  uiBufLen,
      char *pcBuf
 );
@@ -796,7 +779,7 @@ static inline int ventoy_isspace (int c)
 
 static inline int ventoy_is_word_end(int c)
 {
-    return (c == 0 || c == ',' || ventoy_isspace(c));
+    return (c == 0 || c == ',' || ventoy_isspace(c));    
 }
 
 #pragma pack(1)
@@ -881,8 +864,7 @@ typedef struct vhd_footer_t
     grub_uint8_t     savedst;      // Saved state
 }vhd_footer_t;
 
-#define VDI_IMAGE_FILE_INFO    "<<< Oracle VM VirtualBox Disk Image >>>\n"
-#define VDI_IMAGE_FILE_INFO2   "<<< Oracle VirtualBox Disk Image >>>\n"
+#define VDI_IMAGE_FILE_INFO   "<<< Oracle VM VirtualBox Disk Image >>>\n"
 
 /** Image signature. */
 #define VDI_IMAGE_SIGNATURE   (0xbeda107f)
@@ -968,7 +950,7 @@ typedef struct persistence_config
     int cursel;
     int backendnum;
     file_fullpath *backendpath;
-
+    
     struct persistence_config *next;
 }persistence_config;
 
@@ -1170,7 +1152,7 @@ int ventoy_plugin_find_conf_replace(const char *iso, conf_replace *nodes[VTOY_MA
 dud * ventoy_plugin_find_dud(const char *iso);
 int ventoy_plugin_load_dud(dud *node, const char *isopart);
 int ventoy_get_block_list(grub_file_t file, ventoy_img_chunk_list *chunklist, grub_disk_addr_t start);
-int ventoy_check_block_list(grub_file_t file, ventoy_img_chunk_list *chunklist, grub_disk_addr_t start, char *err, grub_uint32_t len);
+int ventoy_check_block_list(grub_file_t file, ventoy_img_chunk_list *chunklist, grub_disk_addr_t start);
 void ventoy_plugin_dump_persistence(void);
 grub_err_t ventoy_cmd_set_theme(grub_extcmd_context_t ctxt, int argc, char **args);
 grub_err_t ventoy_cmd_set_theme_path(grub_extcmd_context_t ctxt, int argc, char **args);
@@ -1293,7 +1275,6 @@ typedef struct systemd_menu_ctx
 {
     char *dev;
     char *buf;
-    const char *initrd_cmd;
     int pos;
     int len;
 }systemd_menu_ctx;
@@ -1308,7 +1289,7 @@ typedef struct global_var_cfg
 typedef struct ctrl_var_cfg
 {
     const char *name;
-    char szval[2];
+    int value;
 }ctrl_var_cfg;
 
 #define vtoy_check_goto_out(p)  if (!p) goto out
@@ -1338,8 +1319,6 @@ int ventoy_ctrl_var_init(void);
 int ventoy_global_var_init(void);
 grub_err_t ventoy_cmd_push_menulang(grub_extcmd_context_t ctxt, int argc, char **args);
 grub_err_t ventoy_cmd_pop_menulang(grub_extcmd_context_t ctxt, int argc, char **args);
-void ventoy_prompt_end(void);
-int ventoy_set_sb_policy(void);
 
 #endif /* __VENTOY_DEF_H__ */
 
