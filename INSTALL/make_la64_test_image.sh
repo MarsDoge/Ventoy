@@ -126,9 +126,15 @@ prepare_base_release() {
     tar -xzf "$tar_path" -C "$base_parent"
   fi
 
-  local dirs=("$base_parent"/ventoy-*-linux)
-  [[ -d "${dirs[0]}" ]] || die "could not find extracted ventoy-*-linux dir under $base_parent"
-  printf '%s\n' "${dirs[0]}"
+  local dirs=("$base_parent"/ventoy-*-linux "$base_parent"/ventoy-*)
+  local dir
+  for dir in "${dirs[@]}"; do
+    if [[ -d "$dir" && -f "$dir/Ventoy2Disk.sh" && -d "$dir/boot" && -d "$dir/ventoy" ]]; then
+      printf '%s\n' "$dir"
+      return
+    fi
+  done
+  die "could not find extracted Ventoy release dir under $base_parent"
 }
 
 overlay_la64_artifacts() {
