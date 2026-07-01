@@ -211,10 +211,17 @@ install_image() {
   mkdir -p "$mnt2"
   log "overlaying LoongArch64 files into installed VTOYEFI partition"
   sudo_if_needed mount "${loopdev}p2" "$mnt2"
-  sudo_if_needed mkdir -p "$mnt2/EFI" "$mnt2/ventoy" "$mnt2/grub" "$mnt2/tool"
-  sudo_if_needed cp -r "$release_dir/EFI/BOOT" "$mnt2/EFI/"
-  sudo_if_needed cp -r "$release_dir/ventoy/." "$mnt2/ventoy/"
-  sudo_if_needed cp -r "$release_dir/grub/." "$mnt2/grub/"
+  sudo_if_needed mkdir -p "$mnt2/EFI/BOOT" "$mnt2/ventoy" "$mnt2/grub/loongarch64-efi" "$mnt2/tool"
+
+  # VTOYEFI is only 32MiB. Do not copy the whole release_dir/ventoy or
+  # release_dir/grub trees here: they include ventoy.disk.img.xz and all
+  # architecture GRUB modules, which can exceed the partition. Overlay only the
+  # LoongArch64 additions that are absent from the official base release.
+  sudo_if_needed cp "$release_dir/EFI/BOOT/BOOTLOONGARCH64.EFI" "$mnt2/EFI/BOOT/"
+  sudo_if_needed cp "$release_dir/ventoy/ventoy_la64.efi" "$mnt2/ventoy/"
+  sudo_if_needed cp "$release_dir/ventoy/vtoyutil_la64.efi" "$mnt2/ventoy/"
+  sudo_if_needed cp "$release_dir/ventoy/ventoy_loongarch64.cpio" "$mnt2/ventoy/"
+  sudo_if_needed cp -r "$release_dir/grub/loongarch64-efi/." "$mnt2/grub/loongarch64-efi/"
   if [[ -f "$release_dir/tool/loongarch64/vtoycli" ]]; then
     sudo_if_needed dd status=none bs=1024 count=16       if="$release_dir/tool/loongarch64/vtoycli"       of="$mnt2/tool/mount.exfat-fuse_loongarch64"
   fi
