@@ -209,8 +209,17 @@ install_image() {
 
   local mnt2="$WORKDIR/mnt-p2"
   mkdir -p "$mnt2"
-  log "checking VTOYEFI contents"
+  log "overlaying LoongArch64 files into installed VTOYEFI partition"
   sudo_if_needed mount "${loopdev}p2" "$mnt2"
+  sudo_if_needed mkdir -p "$mnt2/EFI" "$mnt2/ventoy" "$mnt2/grub" "$mnt2/tool"
+  sudo_if_needed cp -r "$release_dir/EFI/BOOT" "$mnt2/EFI/"
+  sudo_if_needed cp -r "$release_dir/ventoy/." "$mnt2/ventoy/"
+  sudo_if_needed cp -r "$release_dir/grub/." "$mnt2/grub/"
+  if [[ -f "$release_dir/tool/loongarch64/vtoycli" ]]; then
+    sudo_if_needed dd status=none bs=1024 count=16       if="$release_dir/tool/loongarch64/vtoycli"       of="$mnt2/tool/mount.exfat-fuse_loongarch64"
+  fi
+  sync
+  log "checking VTOYEFI contents"
   find "$mnt2" -maxdepth 4 \( -iname '*loong*' -o -iname '*la64*' \) -print || true
   ls -lh "$mnt2/EFI/BOOT" || true
   ls -lh "$mnt2/ventoy" | sed -n '1,80p' || true
