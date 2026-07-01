@@ -180,9 +180,11 @@ install_image() {
   log "loop device: $loopdev"
 
   cleanup_loop() {
-    sudo_if_needed umount "${loopdev}p1" >/dev/null 2>&1 || true
-    sudo_if_needed umount "${loopdev}p2" >/dev/null 2>&1 || true
-    sudo_if_needed losetup -d "$loopdev" >/dev/null 2>&1 || true
+    if [[ -n "${loopdev:-}" ]]; then
+      sudo_if_needed umount "${loopdev}p1" >/dev/null 2>&1 || true
+      sudo_if_needed umount "${loopdev}p2" >/dev/null 2>&1 || true
+      sudo_if_needed losetup -d "$loopdev" >/dev/null 2>&1 || true
+    fi
   }
   trap cleanup_loop EXIT
 
@@ -198,7 +200,9 @@ install_image() {
     mkdir -p "$mnt"
     log "copying ISO to partition 1: $ISO_PATH"
     sudo_if_needed mount "${loopdev}p1" "$mnt"
-    sudo_if_needed cp -a "$ISO_PATH" "$mnt/"
+    local iso_name
+    iso_name=$(basename -- "$ISO_PATH")
+    sudo_if_needed cp "$ISO_PATH" "$mnt/$iso_name"
     sync
     sudo_if_needed umount "$mnt"
   fi
