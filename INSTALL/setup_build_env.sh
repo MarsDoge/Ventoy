@@ -2,7 +2,7 @@
 # Prepare a Ventoy build environment and optionally run common build steps.
 #
 # Typical use:
-#   bash INSTALL/setup_build_env.sh --install-deps --download
+#   bash INSTALL/setup_build_env.sh --install-deps --download-all
 #   bash INSTALL/setup_build_env.sh --grub-loongarch-native
 #   bash INSTALL/setup_build_env.sh --all-in-one
 #
@@ -38,7 +38,9 @@ Usage: bash INSTALL/setup_build_env.sh [options]
 
 Options:
   --install-deps              Install common build packages with the host package manager.
-  --download                  Download Ventoy third-party source/tool archives.
+  --download                  Download inputs needed by selected build steps.
+                              With --grub-loongarch-native, downloads only GRUB2/grub-2.04.tar.xz.
+  --download-all              Download all Ventoy third-party source/tool archives.
   --extract-toolchains        Extract downloaded cross toolchains into /opt (requires sudo).
   --grub-loongarch-native     Build/install only native loongarch64-efi GRUB modules.
   --all-in-one                Run INSTALL/all_in_one.sh after preparation.
@@ -48,20 +50,20 @@ Options:
 
 Common flows:
   # Prepare downloads/deps on a developer machine:
-  bash INSTALL/setup_build_env.sh --install-deps --download
+  bash INSTALL/setup_build_env.sh --install-deps --download-all
 
   # LoongArch64 validation machine: build only native GRUB baseline:
   bash INSTALL/setup_build_env.sh --download --grub-loongarch-native
 
   # Traditional full build, when all cross toolchains and binary inputs are ready:
-  bash INSTALL/setup_build_env.sh --install-deps --download --extract-toolchains --all-in-one
+  bash INSTALL/setup_build_env.sh --install-deps --download-all --extract-toolchains --all-in-one
 EOF
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --install-deps) INSTALL_DEPS=1 ;;
-    --download) DOWNLOAD=1 ;;
+    --download|--download-all) DOWNLOAD=1 ;;
     --extract-toolchains) EXTRACT_TOOLCHAINS=1 ;;
     --grub-loongarch-native) GRUB_LOONGARCH_NATIVE=1 ;;
     --all-in-one) ALL_IN_ONE=1 ;;
@@ -138,7 +140,14 @@ download_file() {
 
 download_inputs() {
   need_cmd wget
-  log "downloading third-party inputs"
+  if [[ "$GRUB_LOONGARCH_NATIVE" -eq 1 && "$EXTRACT_TOOLCHAINS" -eq 0 && "$ALL_IN_ONE" -eq 0 ]]; then
+    log "downloading native LoongArch64 GRUB input"
+    download_file "https://github.com/ventoy/vtoytoolchain/releases/download/1.0/grub-2.04.tar.xz" \
+      "$REPO_ROOT/GRUB2/grub-2.04.tar.xz"
+    return
+  fi
+
+  log "downloading all third-party inputs"
 
   download_file "https://github.com/ventoy/vtoytoolchain/releases/download/1.0/dietlibc-0.34.tar.xz" \
     "$REPO_ROOT/DOC/dietlibc-0.34.tar.xz"
