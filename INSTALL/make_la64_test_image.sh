@@ -213,10 +213,16 @@ install_image() {
   sudo_if_needed mount "${loopdev}p2" "$mnt2"
   sudo_if_needed mkdir -p "$mnt2/EFI/BOOT" "$mnt2/ventoy" "$mnt2/grub/loongarch64-efi" "$mnt2/tool"
 
-  # VTOYEFI is only 32MiB. Do not copy the whole release_dir/ventoy or
-  # release_dir/grub trees here: they include ventoy.disk.img.xz and all
-  # architecture GRUB modules, which can exceed the partition. Overlay only the
-  # LoongArch64 additions that are absent from the official base release.
+  # VTOYEFI is only 32MiB and the official release image is already tight.
+  # For this LA64-only smoke image, remove non-LoongArch payloads before adding
+  # the LoongArch EFI/runtime files.
+  sudo_if_needed rm -f     "$mnt2"/EFI/BOOT/BOOTX64.EFI     "$mnt2"/EFI/BOOT/BOOTIA32.EFI     "$mnt2"/EFI/BOOT/BOOTAA64.EFI     "$mnt2"/EFI/BOOT/BOOTMIPS.EFI     "$mnt2"/ventoy/ventoy_x86.cpio     "$mnt2"/ventoy/ventoy_arm64.cpio     "$mnt2"/ventoy/ventoy_mips64.cpio     "$mnt2"/ventoy/ventoy_x64.efi     "$mnt2"/ventoy/ventoy_ia32.efi     "$mnt2"/ventoy/ventoy_aa64.efi     "$mnt2"/ventoy/vtoyutil_x64.efi     "$mnt2"/ventoy/vtoyutil_ia32.efi     "$mnt2"/ventoy/vtoyutil_aa64.efi     "$mnt2"/ventoy/wimboot.x86_64.xz     "$mnt2"/ventoy/wimboot.i386.efi.xz
+  sudo_if_needed rm -rf     "$mnt2"/grub/x86_64-efi     "$mnt2"/grub/i386-efi     "$mnt2"/grub/arm64-efi     "$mnt2"/grub/mips64el-efi     "$mnt2"/grub/i386-pc     "$mnt2"/ventoy/imdisk     "$mnt2"/ventoy/7z
+
+  # Do not copy the whole release_dir/ventoy or release_dir/grub trees here:
+  # they include ventoy.disk.img.xz and all architecture GRUB modules, which can
+  # exceed the partition. Overlay only the LoongArch64 additions that are absent
+  # from the official base release.
   sudo_if_needed cp "$release_dir/EFI/BOOT/BOOTLOONGARCH64.EFI" "$mnt2/EFI/BOOT/"
   sudo_if_needed cp "$release_dir/ventoy/ventoy_la64.efi" "$mnt2/ventoy/"
   sudo_if_needed cp "$release_dir/ventoy/vtoyutil_la64.efi" "$mnt2/ventoy/"
